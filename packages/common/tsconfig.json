@@ -1,5 +1,3 @@
 {
-  "extends": "@workers-image-resize-delivery/typescript-config/base.json",
-  "include": ["."],
-  "exclude": ["node_modules"]
+  "extends": "@workers-image-resize-delivery/typescript-config/base.json"
 }

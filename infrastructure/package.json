@@ -1,5 +1,5 @@
 {
-  "name": "@workers-image-resize-delivery/infrastructure",
+  "name": "infrastructure",
   "main": "index.ts",
   "scripts": {
     "up": "dotenv -- pulumi up -y",
