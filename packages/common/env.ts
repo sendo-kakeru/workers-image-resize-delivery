@@ -3,7 +3,7 @@ import * as v from "valibot";
 const ServerEnvSchema = v.object({
   APEX_DOMAIN: v.string(),
   ACCOUNT_ID: v.string(),
-  ZONE_ID: v.string(),
+  // ZONE_ID: v.string(),
   CLOUDFLARE_API_TOKEN: v.string(),
 });
 
