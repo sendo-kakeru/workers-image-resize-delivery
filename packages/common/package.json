@@ -1,0 +1,14 @@
+{
+  "name": "@workers-image-resize-delivery/common",
+  "main": "index.ts",
+  "devDependencies": {
+    "@workers-image-resize-delivery/eslint-config": "workspace:*",
+    "@workers-image-resize-delivery/typescript-config": "workspace:*",
+    "@types/node": "^18",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "valibot": "^1.1.0"
+  },
+  "packageManager": "pnpm@9.0.0"
+}
