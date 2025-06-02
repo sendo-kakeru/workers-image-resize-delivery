@@ -17,5 +17,5 @@ export type ImageContentType =
   (typeof ImageExtensionToContentTypeMap)[ImageExtension];
 
 export const imageExtensions = Object.keys(
-  ImageExtensionToContentTypeMap
+  ImageExtensionToContentTypeMap,
 ) as ImageExtension[];

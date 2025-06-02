@@ -1,6 +1,6 @@
 import { Context, Hono } from "hono";
 import { vValidator } from "@hono/valibot-validator";
-import v from "valibot";
+import * as v from "valibot";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import {
   imageExtensions,

@@ -24,7 +24,7 @@ try {
       .join("\n");
     throw new Error(
       `Invalid environment variable values detected. Please check the following variables:
-${invalidPaths}`
+${invalidPaths}`,
     );
   }
   throw error;
