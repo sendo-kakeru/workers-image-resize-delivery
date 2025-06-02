@@ -6,10 +6,16 @@
     "cf-typegen": "wrangler types --env-interface CloudflareBindings"
   },
   "dependencies": {
+    "@workers-image-resize-delivery/typescript-config": "workspace:*",
+    "@workers-image-resize-delivery/common": "workspace:*",
+    "@aws-sdk/client-s3": "^3.821.0",
+    "@aws-sdk/s3-request-presigner": "^3.821.0",
+    "@hono/valibot-validator": "^0.5.2",
     "hono": "^4.7.11",
-    "@workers-image-resize-delivery/typescript-config": "workspace:*"
+    "valibot": "^1.1.0"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250601.0",
     "@workers-image-resize-delivery/common": "workspace:*",
     "wrangler": "^4.4.0"
   }
