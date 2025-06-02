@@ -70,10 +70,11 @@ app.post(
       { success, output, issues },
       c: Context<{ Variables: Variables }>
     ) => {
+      const { CDN_URL } = env<Env>(c);
       if (!success) {
         return c.json(
           {
-            type: `${env<Env>(c).CDN_URL}/problem/invalid`,
+            type: `${CDN_URL}/problem/invalid`,
             title: "Bad Request",
             detail: "Invalid request",
             instance: c.req.path,
@@ -105,7 +106,7 @@ app.post(
         console.error("Failed to generate signed URL:", error);
         return c.json(
           {
-            type: `${c.req.url.split(c.req.path)[0]}/problem/internal-error`,
+            type: `${CDN_URL}/problem/internal-error`,
             title: "Internal Server Error",
             detail: "Failed to generate signed URL",
             instance: c.req.path,
