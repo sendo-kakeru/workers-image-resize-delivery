@@ -48,7 +48,13 @@ app.post(
     v.object({
       path: v.pipe(
         v.string(),
-        v.transform((input) => input.replace(/\/+$/, ""))
+        v.transform((input) => input.replace(/\/+$/, "")),
+        v.regex(/^[a-zA-Z0-9\-_\/]+$/, "Path contains invalid characters"),
+        v.custom(
+          (input) =>
+            typeof input === "string" ? !input.includes("..") : false,
+          "Path traversal patterns are not allowed"
+        )
       ),
       extension: v.pipe(
         v.string(),
