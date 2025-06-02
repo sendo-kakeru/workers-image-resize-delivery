@@ -21,7 +21,7 @@ new cloudflare.R2BucketCors("r2_bucket_cors", {
     {
       allowed: {
         origins: [env.APP_URL],
-        methods: ["GET", "POST"],
+        methods: ["PUT"],
         headers: ["*"],
       },
     },

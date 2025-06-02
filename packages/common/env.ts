@@ -1,7 +1,7 @@
 import * as v from "valibot";
 
 const EnvSchema = v.object({
-  CDN_URL: v.pipe(v.string(), v.url()),
+  NEXT_PUBLIC_CDN_URL: v.pipe(v.string(), v.url()),
   APP_URL: v.pipe(v.string(), v.url()),
   // CLOUDFLARE_APEX_DOMAIN: v.string(),
   CLOUDFLARE_ACCOUNT_ID: v.string(),
@@ -24,7 +24,7 @@ try {
       .join("\n");
     throw new Error(
       `Invalid environment variable values detected. Please check the following variables:
-${invalidPaths}`,
+${invalidPaths}`
     );
   }
   throw error;
