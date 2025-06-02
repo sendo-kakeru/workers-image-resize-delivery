@@ -88,18 +88,35 @@ app.post(
       }
       const { path, extension } = output;
       const key = crypto.randomUUID();
-      const signedUrl = await getSignedUrl(
-        c.var.r2Client,
-        new PutObjectCommand({
-          Bucket: R2_BUCKET_NAME,
-          Key: `${path}/${key}.${extension}`,
-          ContentType: ImageExtensionToContentTypeMap[extension],
-        }),
-        {
-          expiresIn: 3600,
-        }
-      );
-      return c.json({ url: signedUrl, key });
+      try {
+        const signedUrl = await getSignedUrl(
+          c.var.r2Client,
+          new PutObjectCommand({
+            Bucket: R2_BUCKET_NAME,
+            Key: `${path}/${key}.${extension}`,
+            ContentType: ImageExtensionToContentTypeMap[extension],
+          }),
+          {
+            expiresIn: 3600,
+          }
+        );
+        return c.json({ url: signedUrl, key });
+      } catch (error) {
+        console.error("Failed to generate signed URL:", error);
+        return c.json(
+          {
+            type: `${c.req.url.split(c.req.path)[0]}/problem/internal-error`,
+            title: "Internal Server Error",
+            detail: "Failed to generate signed URL",
+            instance: c.req.path,
+          },
+          500,
+          {
+            "Content-Type": "application/problem+json",
+            "Content-Language": "en",
+          }
+        );
+      }
     }
   )
 );
