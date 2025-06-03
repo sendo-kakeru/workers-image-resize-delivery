@@ -1,17 +1,17 @@
 import { Context, Hono } from "hono";
 import { vValidator } from "@hono/valibot-validator";
-import v from "valibot";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import {
-  imageExtensions,
-  ImageExtensionToContentTypeMap,
+  IMAGE_EXTENSION_TO_CONTENT_TYPE_MAP,
   R2_BUCKET_NAME,
   R2_BUCKET_REGION,
 } from "@workers-image-resize-delivery/common/constants";
+import { SignedUrlRequestSchema } from "@workers-image-resize-delivery/common/schema";
 import { Env } from "@workers-image-resize-delivery/common/env";
 import { createMiddleware } from "hono/factory";
 import { env } from "hono/adapter";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { cors } from "hono/cors";
 
 type Variables = {
   r2Client: S3Client;
@@ -22,21 +22,37 @@ const app = new Hono<{
 }>();
 
 let r2Client: S3Client | null = null;
+const envVars = {
+  CLOUDFLARE_R2_ENDPOINT: "",
+  CLOUDFLARE_R2_ACCESS_KEY_ID: "",
+  CLOUDFLARE_R2_SECRET_ACCESS_KEY: "",
+};
+
+app.use(
+  "*",
+  cors({
+    origin: (_origin, c) => {
+      const { APP_URL } = env<Env>(c);
+      return APP_URL;
+    },
+    allowHeaders: ["*"],
+    allowMethods: ["POST", "GET"],
+  })
+);
 
 app.use(
   createMiddleware(async (c, next) => {
+    if (!envVars.CLOUDFLARE_R2_ENDPOINT) {
+      const envData = env<Env>(c);
+      Object.assign(envVars, envData);
+    }
     if (!r2Client) {
-      const {
-        CLOUDFLARE_R2_ENDPOINT,
-        CLOUDFLARE_R2_ACCESS_KEY_ID,
-        CLOUDFLARE_R2_SECRET_ACCESS_KEY,
-      } = env<Env>(c);
       r2Client = new S3Client({
         region: R2_BUCKET_REGION,
-        endpoint: CLOUDFLARE_R2_ENDPOINT,
+        endpoint: envVars.CLOUDFLARE_R2_ENDPOINT,
         credentials: {
-          accessKeyId: CLOUDFLARE_R2_ACCESS_KEY_ID,
-          secretAccessKey: CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+          accessKeyId: envVars.CLOUDFLARE_R2_ACCESS_KEY_ID,
+          secretAccessKey: envVars.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
         },
       });
     }
@@ -49,32 +65,16 @@ app.post(
   "/signed-url",
   vValidator(
     "json",
-    v.object({
-      path: v.pipe(
-        v.string(),
-        v.transform((input) => input.replace(/\/+$/, "")),
-        v.regex(/^[a-zA-Z0-9\-_\/]+$/, "Path contains invalid characters"),
-        v.custom(
-          (input) =>
-            typeof input === "string" ? !input.includes("..") : false,
-          "Path traversal patterns are not allowed"
-        )
-      ),
-      extension: v.pipe(
-        v.string(),
-        v.transform((input) => input.toLowerCase()),
-        v.union(imageExtensions.map((extension) => v.literal(extension)))
-      ),
-    }),
+    SignedUrlRequestSchema,
     async (
       { success, output, issues },
       c: Context<{ Variables: Variables }>
     ) => {
-      const { CDN_URL } = env<Env>(c);
+      const { NEXT_PUBLIC_CDN_URL } = env<Env>(c);
       if (!success) {
         return c.json(
           {
-            type: `${CDN_URL}/problem/invalid`,
+            type: `${NEXT_PUBLIC_CDN_URL}/problem/invalid`,
             title: "Bad Request",
             detail: "Invalid request",
             instance: c.req.path,
@@ -95,7 +95,7 @@ app.post(
           new PutObjectCommand({
             Bucket: R2_BUCKET_NAME,
             Key: `${path}/${key}.${extension}`,
-            ContentType: ImageExtensionToContentTypeMap[extension],
+            ContentType: IMAGE_EXTENSION_TO_CONTENT_TYPE_MAP[extension],
           }),
           {
             expiresIn: 3600,
@@ -106,7 +106,7 @@ app.post(
         console.error("Failed to generate signed URL:", error);
         return c.json(
           {
-            type: `${CDN_URL}/problem/internal-error`,
+            type: `${NEXT_PUBLIC_CDN_URL}/problem/internal-error`,
             title: "Internal Server Error",
             detail: "Failed to generate signed URL",
             instance: c.req.path,
