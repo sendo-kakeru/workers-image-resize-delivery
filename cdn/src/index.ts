@@ -22,6 +22,11 @@ const app = new Hono<{
 }>();
 
 let r2Client: S3Client | null = null;
+const envVars = {
+  CLOUDFLARE_R2_ENDPOINT: "",
+  CLOUDFLARE_R2_ACCESS_KEY_ID: "",
+  CLOUDFLARE_R2_SECRET_ACCESS_KEY: "",
+};
 
 app.use(
   "*",
@@ -37,18 +42,17 @@ app.use(
 
 app.use(
   createMiddleware(async (c, next) => {
-    const {
-      CLOUDFLARE_R2_ENDPOINT,
-      CLOUDFLARE_R2_ACCESS_KEY_ID,
-      CLOUDFLARE_R2_SECRET_ACCESS_KEY,
-    } = env<Env>(c);
+    if (!envVars.CLOUDFLARE_R2_ENDPOINT) {
+      const envData = env<Env>(c);
+      Object.assign(envVars, envData);
+    }
     if (!r2Client) {
       r2Client = new S3Client({
         region: R2_BUCKET_REGION,
-        endpoint: CLOUDFLARE_R2_ENDPOINT,
+        endpoint: envVars.CLOUDFLARE_R2_ENDPOINT,
         credentials: {
-          accessKeyId: CLOUDFLARE_R2_ACCESS_KEY_ID,
-          secretAccessKey: CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+          accessKeyId: envVars.CLOUDFLARE_R2_ACCESS_KEY_ID,
+          secretAccessKey: envVars.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
         },
       });
     }

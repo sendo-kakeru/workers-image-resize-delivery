@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  IMAGE_EXTENSIONS,
+  IMAGE_CONTENT_TYPE,
   MAXIMUM_IMAGE_SIZE,
 } from "@workers-image-resize-delivery/common/constants";
 import {
@@ -82,7 +82,7 @@ export default function ImageUpload() {
         <input
           type="file"
           multiple
-          accept={IMAGE_EXTENSIONS.join(",")}
+          accept={IMAGE_CONTENT_TYPE.join(",")}
           onChange={handleFileChange}
           className={classNames(
             "block w-full text-sm text-gray-700",

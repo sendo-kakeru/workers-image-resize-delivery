@@ -20,4 +20,10 @@ export const IMAGE_EXTENSIONS = Object.keys(
   IMAGE_EXTENSION_TO_CONTENT_TYPE_MAP
 ) as ImageExtension[];
 
-export const MAXIMUM_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
+export const IMAGE_CONTENT_TYPE = [
+  ...new Set(Object.values(IMAGE_EXTENSION_TO_CONTENT_TYPE_MAP)),
+] as ImageContentType[];
+/**
+ * 5 MB
+ */
+export const MAXIMUM_IMAGE_SIZE = 5 * 1024 * 1024;
