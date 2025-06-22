@@ -2,6 +2,7 @@
 
 import {
   IMAGE_CONTENT_TYPE,
+  IMAGE_DELIVERY_PATH,
   MAXIMUM_IMAGE_SIZE,
 } from "@workers-image-resize-delivery/common/constants";
 import {
@@ -31,7 +32,7 @@ export default function ImageUpload() {
             throw new Error("Image size exceeds limit");
           }
           const { path, extension } = v.parse(SignedUrlRequestSchema, {
-            path: "images",
+            path: "path",
             extension: file.name.split(".").pop() ?? "",
           });
           const response = await fetch(
@@ -61,7 +62,7 @@ export default function ImageUpload() {
           if (!putResponse.ok) {
             throw new Error("Failed to upload image");
           }
-          return url;
+          return `${process.env.NEXT_PUBLIC_CDN_URL}/${IMAGE_DELIVERY_PATH}/${key}`;
         })
       );
       setImageUrls(urls);

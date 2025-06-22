@@ -2,7 +2,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "cdn",
   "main": "src/index.ts",
-  "compatibility_date": "2025-06-01"
+  "compatibility_date": "2025-06-01",
   // "compatibility_flags": [
   //   "nodejs_compat"
   // ],
@@ -15,12 +15,13 @@
   //     "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
   //   }
   // ],
-  // "r2_buckets": [
-  //   {
-  //     "binding": "MY_BUCKET",
-  //     "bucket_name": "my-bucket"
-  //   }
-  // ],
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "my-bucket",
+      "preview_bucket_name": "my-bucket",
+    },
+  ],
   // "d1_databases": [
   //   {
   //     "binding": "MY_DB",
