@@ -4,7 +4,7 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "up": "turbo run up",
+    "up": "turbo run up && cd cdn && pnpm run deploy",
     "down": "turbo run down",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",

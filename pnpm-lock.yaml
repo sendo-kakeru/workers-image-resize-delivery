@@ -109,9 +109,6 @@ importers:
       '@pulumi/cloudflare':
         specifier: ^6.2.0
         version: 6.2.0(ts-node@10.9.2(@types/node@18.19.110)(typescript@5.8.2))(typescript@5.8.2)
-      '@pulumi/command':
-        specifier: ^1.1.0
-        version: 1.1.0(ts-node@10.9.2(@types/node@18.19.110)(typescript@5.8.2))(typescript@5.8.2)
       '@pulumi/pulumi':
         specifier: ^3.113.0
         version: 3.173.0(ts-node@10.9.2(@types/node@18.19.110)(typescript@5.8.2))(typescript@5.8.2)
@@ -1160,9 +1157,6 @@ packages:
 
   '@pulumi/cloudflare@6.2.0':
     resolution: {integrity: sha512-PXTYyf1oUoaiGsHUzFtKwlNySkA6IzS37TpYo3gvpem6R+x4Ot3t3sGQCuPi24a5TweeAmPPSY33+EGjqlAIhw==}
-
-  '@pulumi/command@1.1.0':
-    resolution: {integrity: sha512-ovVec+gXeqpcm76xwYYZvfJym8bG9NRvlBGQWbn0+c0fKQziZIjiv5V+AxTKfb+dLWKe7Otyt206L1IWq41hyw==}
 
   '@pulumi/pulumi@3.173.0':
     resolution: {integrity: sha512-/qvSyYaNBV8RpB+B24H2CqF7DA+OHzUqMa/NUJWmCE41UNHPlscFgNMfR0EV7IKqH0woKtzA3DOloBZfPjINVg==}
@@ -5092,15 +5086,6 @@ snapshots:
   '@protobufjs/utf8@1.1.0': {}
 
   '@pulumi/cloudflare@6.2.0(ts-node@10.9.2(@types/node@18.19.110)(typescript@5.8.2))(typescript@5.8.2)':
-    dependencies:
-      '@pulumi/pulumi': 3.173.0(ts-node@10.9.2(@types/node@18.19.110)(typescript@5.8.2))(typescript@5.8.2)
-    transitivePeerDependencies:
-      - bluebird
-      - supports-color
-      - ts-node
-      - typescript
-
-  '@pulumi/command@1.1.0(ts-node@10.9.2(@types/node@18.19.110)(typescript@5.8.2))(typescript@5.8.2)':
     dependencies:
       '@pulumi/pulumi': 3.173.0(ts-node@10.9.2(@types/node@18.19.110)(typescript@5.8.2))(typescript@5.8.2)
     transitivePeerDependencies:

@@ -3,10 +3,11 @@ import * as v from "valibot";
 const EnvSchema = v.object({
   NEXT_PUBLIC_CDN_URL: v.pipe(v.string(), v.url()),
   APP_URL: v.pipe(v.string(), v.url()),
+  BUCKET_URL: v.pipe(v.string(), v.url()),
   // CLOUDFLARE_APEX_DOMAIN: v.string(),
   CLOUDFLARE_ACCOUNT_ID: v.string(),
   // ZONE_ID: v.string(),
-  CLOUDFLARE_API_TOKEN: v.string(),
+  // CLOUDFLARE_API_TOKEN: v.string(),
   CLOUDFLARE_R2_ENDPOINT: v.pipe(v.string(), v.url()),
   CLOUDFLARE_R2_ACCESS_KEY_ID: v.string(),
   CLOUDFLARE_R2_SECRET_ACCESS_KEY: v.string(),

@@ -5,7 +5,6 @@ import {
   R2_BUCKET_NAME,
   R2_BUCKET_REGION,
 } from "@workers-image-resize-delivery/common/constants";
-// import { local } from "@pulumi/command";
 
 config();
 
@@ -24,15 +23,16 @@ new cloudflare.R2BucketCors("r2_bucket_cors", {
   rules: [
     {
       allowed: {
-        origins: [env.APP_URL],
-        methods: ["PUT"],
+        origins: [env.NEXT_PUBLIC_CDN_URL, env.APP_URL],
+        methods: ["GET", "PUT"],
         headers: ["*"],
       },
     },
   ],
 });
 
-// workersをデプロイする場合は下記
-// new local.Command("run-deploy", {
-//   create: "cd ../cdn && pnpm run deploy"
-// });
+new cloudflare.R2ManagedDomain("r2_bucket_domain", {
+  accountId,
+  bucketName: R2_BUCKET_NAME,
+  enabled: true,
+});

@@ -13,7 +13,10 @@ import { createMiddleware } from "hono/factory";
 import { env } from "hono/adapter";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { cors } from "hono/cors";
-import type { R2Bucket } from "@cloudflare/workers-types";
+import type {
+  R2Bucket,
+  RequestInitCfPropertiesImage,
+} from "@cloudflare/workers-types";
 
 type Bindings = {
   BUCKET: R2Bucket;
@@ -43,7 +46,7 @@ app.use(
       return APP_URL;
     },
     allowHeaders: ["*"],
-    allowMethods: ["POST", "GET"],
+    allowMethods: ["GET", "POST"],
   })
 );
 
@@ -108,7 +111,7 @@ app.post(
 );
 
 app.get(`${IMAGE_DELIVERY_PATH}/*`, async (c) => {
-  const { NEXT_PUBLIC_CDN_URL } = env<Env>(c);
+  const { NEXT_PUBLIC_CDN_URL, BUCKET_URL } = env<Env>(c);
   const pathPrefix = `/${IMAGE_DELIVERY_PATH}/`;
   const key = c.req.path.substring(pathPrefix.length);
 
@@ -128,14 +131,71 @@ app.get(`${IMAGE_DELIVERY_PATH}/*`, async (c) => {
     );
   }
   try {
-    const object = await c.env.BUCKET.get(key);
-    if (!object) {
-      return c.notFound();
+    const url = new URL(c.req.url);
+    const width = url.searchParams.get("width");
+    const height = url.searchParams.get("height");
+
+    if ((width && Number(width) > 3000) || (height && Number(height) > 3000)) {
+      return c.json(
+        {
+          type: `${NEXT_PUBLIC_CDN_URL}/problem/invalid`,
+          title: "Bad Request",
+          detail: "Image dimensions exceed maximum allowed size (3000px)",
+          instance: c.req.path,
+        },
+        400,
+        {
+          "Content-Type": "application/problem+json",
+          "Content-Language": "en",
+        }
+      );
     }
-    const body = await object.arrayBuffer();
-    return c.body(body, 200, {
-      "Content-Type": object.httpMetadata?.contentType ?? "image/jpeg",
+
+    // 本番でカスタムドメインをつけた時のみ、image resizeが適応されるので開発時は効かない
+    return fetch(`${BUCKET_URL}/${key}`, {
+      cf: {
+        image: {
+          width: width ?? undefined,
+          height: height ?? undefined,
+          format: "webp",
+          metadata: "none",
+        },
+      },
+    } as RequestInit & {
+      cf: {
+        image: RequestInitCfPropertiesImage;
+      };
     });
+
+    // R2を直接参照して加工するのは現状難しそう https://community.cloudflare.com/t/image-resize-from-r2-bucket-source/481816
+    // const url = new URL(c.req.url);
+    // const object = await c.env.BUCKET.get(key);
+    // if (!object) {
+    //   return c.notFound();
+    // }
+    // const width = url.searchParams.get("width");
+    // const height = url.searchParams.get("height");
+
+    // if ((width && Number(width) > 3000) || (height && Number(height) > 3000)) {
+    //   return new Response("Invalid value for " + key, { status: 400 });
+    // }
+
+    // return fetch(c.req.raw, {
+    //   method: "POST",
+    //   body: await object.arrayBuffer(),
+    //   cf: {
+    //     image: {
+    //       width: width ? width : undefined,
+    //       height: height ? height : undefined,
+    //       format: "webp",
+    //       metadata: "none",
+    //     },
+    //   },
+    // } as RequestInit & {
+    //   cf: {
+    //     image: RequestInitCfPropertiesImage;
+    //   };
+    // });
   } catch (error) {
     console.error("Failed to fetch object:", error);
     return c.json(
