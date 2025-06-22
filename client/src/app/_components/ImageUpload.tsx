@@ -100,7 +100,7 @@ export default function ImageUpload() {
               className="rounded-lg overflow-hidden shadow-md border border-gray-200"
             >
               <Image
-                src={url}
+                src={`${url}?width=960`}
                 alt="uploaded image"
                 width={960}
                 height={960}
