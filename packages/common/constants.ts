@@ -27,3 +27,5 @@ export const IMAGE_CONTENT_TYPE = [
  * 5 MB
  */
 export const MAXIMUM_IMAGE_SIZE = 5 * 1024 * 1024;
+
+export const IMAGE_DELIVERY_PATH = "images";
