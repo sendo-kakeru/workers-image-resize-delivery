@@ -17,6 +17,7 @@ import type {
   R2Bucket,
   RequestInitCfPropertiesImage,
 } from "@cloudflare/workers-types";
+import { etag } from "hono/etag";
 
 type Bindings = {
   BUCKET: R2Bucket;
@@ -49,6 +50,8 @@ app.use(
     allowMethods: ["GET", "POST"],
   })
 );
+
+app.use("*", etag());
 
 app.use(
   createMiddleware(async (c, next) => {
@@ -153,6 +156,10 @@ app.get(`${IMAGE_DELIVERY_PATH}/*`, async (c) => {
 
     // 本番でカスタムドメインをつけた時のみ、image resizeが適応されるので開発時は効かない
     return fetch(`${BUCKET_URL}/${key}`, {
+      headers: {
+        ETag: await generateETag(c.req.url),
+        "Cache-Control": "public, max-age=315360000, immutable",
+      },
       cf: {
         image: {
           width: width ?? undefined,
@@ -215,3 +222,14 @@ app.get(`${IMAGE_DELIVERY_PATH}/*`, async (c) => {
 });
 
 export default app;
+
+async function generateETag(input: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(input);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return `"${hashHex}"`;
+}
