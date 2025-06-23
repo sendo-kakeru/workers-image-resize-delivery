@@ -17,6 +17,8 @@ import type {
   R2Bucket,
   RequestInitCfPropertiesImage,
 } from "@cloudflare/workers-types";
+import { etag } from "hono/etag";
+import { cache } from "hono/cache";
 
 type Bindings = {
   BUCKET: R2Bucket;
@@ -49,6 +51,8 @@ app.use(
     allowMethods: ["GET", "POST"],
   })
 );
+
+app.use("*", etag());
 
 app.use(
   createMiddleware(async (c, next) => {
@@ -110,37 +114,22 @@ app.post(
   }
 );
 
-app.get(`${IMAGE_DELIVERY_PATH}/*`, async (c) => {
-  const { NEXT_PUBLIC_CDN_URL, BUCKET_URL } = env<Env>(c);
-  const pathPrefix = `/${IMAGE_DELIVERY_PATH}/`;
-  const key = c.req.path.substring(pathPrefix.length);
+app.get(
+  `${IMAGE_DELIVERY_PATH}/*`,
+  cache({
+    cacheName: "image-delivery",
+  }),
+  async (c) => {
+    const { NEXT_PUBLIC_CDN_URL, BUCKET_URL } = env<Env>(c);
+    const pathPrefix = `/${IMAGE_DELIVERY_PATH}/`;
+    const key = c.req.path.substring(pathPrefix.length);
 
-  if (!key || key.includes("..") || key.startsWith("/")) {
-    return c.json(
-      {
-        type: `${NEXT_PUBLIC_CDN_URL}/problem/invalid`,
-        title: "Bad Request",
-        detail: "Invalid request",
-        instance: c.req.path,
-      },
-      400,
-      {
-        "Content-Type": "application/problem+json",
-        "Content-Language": "en",
-      }
-    );
-  }
-  try {
-    const url = new URL(c.req.url);
-    const width = url.searchParams.get("width");
-    const height = url.searchParams.get("height");
-
-    if ((width && Number(width) > 3000) || (height && Number(height) > 3000)) {
+    if (!key || key.includes("..") || key.startsWith("/")) {
       return c.json(
         {
           type: `${NEXT_PUBLIC_CDN_URL}/problem/invalid`,
           title: "Bad Request",
-          detail: "Image dimensions exceed maximum allowed size (3000px)",
+          detail: "Invalid request",
           instance: c.req.path,
         },
         400,
@@ -150,68 +139,114 @@ app.get(`${IMAGE_DELIVERY_PATH}/*`, async (c) => {
         }
       );
     }
+    try {
+      const url = new URL(c.req.url);
+      const width = url.searchParams.get("width");
+      const height = url.searchParams.get("height");
 
-    // 本番でカスタムドメインをつけた時のみ、image resizeが適応されるので開発時は効かない
-    return fetch(`${BUCKET_URL}/${key}`, {
-      cf: {
-        image: {
-          width: width ?? undefined,
-          height: height ?? undefined,
-          format: "webp",
-          metadata: "none",
-        },
-      },
-    } as RequestInit & {
-      cf: {
-        image: RequestInitCfPropertiesImage;
-      };
-    });
-
-    // R2を直接参照して加工するのは現状難しそう https://community.cloudflare.com/t/image-resize-from-r2-bucket-source/481816
-    // const url = new URL(c.req.url);
-    // const object = await c.env.BUCKET.get(key);
-    // if (!object) {
-    //   return c.notFound();
-    // }
-    // const width = url.searchParams.get("width");
-    // const height = url.searchParams.get("height");
-
-    // if ((width && Number(width) > 3000) || (height && Number(height) > 3000)) {
-    //   return new Response("Invalid value for " + key, { status: 400 });
-    // }
-
-    // return fetch(c.req.raw, {
-    //   method: "POST",
-    //   body: await object.arrayBuffer(),
-    //   cf: {
-    //     image: {
-    //       width: width ? width : undefined,
-    //       height: height ? height : undefined,
-    //       format: "webp",
-    //       metadata: "none",
-    //     },
-    //   },
-    // } as RequestInit & {
-    //   cf: {
-    //     image: RequestInitCfPropertiesImage;
-    //   };
-    // });
-  } catch (error) {
-    console.error("Failed to fetch object:", error);
-    return c.json(
-      {
-        type: `${NEXT_PUBLIC_CDN_URL}/problem/internal-error`,
-        title: "Internal Server Error",
-        detail: "Failed to generate signed URL",
-        instance: c.req.path,
-      },
-      500,
-      {
-        "Content-Type": "application/problem+json",
-        "Content-Language": "en",
+      if (
+        (width && Number(width) > 3000) ||
+        (height && Number(height) > 3000)
+      ) {
+        return c.json(
+          {
+            type: `${NEXT_PUBLIC_CDN_URL}/problem/invalid`,
+            title: "Bad Request",
+            detail: "Image dimensions exceed maximum allowed size (3000px)",
+            instance: c.req.path,
+          },
+          400,
+          {
+            "Content-Type": "application/problem+json",
+            "Content-Language": "en",
+          }
+        );
       }
-    );
+
+      // 本番でカスタムドメインをつけた時のみ、image resizeが適応されるので開発時は効かない
+      const response = await fetch(`${BUCKET_URL}/${key}`, {
+        cf: {
+          image: {
+            width: width ?? undefined,
+            height: height ?? undefined,
+            format: "webp",
+            metadata: "none",
+          },
+        },
+      } as RequestInit & {
+        cf: {
+          image: RequestInitCfPropertiesImage;
+        };
+      });
+
+      const buffer = await response.arrayBuffer();
+      const headers = new Headers(response.headers);
+      headers.set("ETag", await generateETag(c.req.url));
+      headers.set("Cache-Control", "public, max-age=315360000, immutable");
+
+      return new Response(buffer, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
+
+      // R2を直接参照して加工するのは現状難しそう https://community.cloudflare.com/t/image-resize-from-r2-bucket-source/481816
+      // const url = new URL(c.req.url);
+      // const object = await c.env.BUCKET.get(key);
+      // if (!object) {
+      //   return c.notFound();
+      // }
+      // const width = url.searchParams.get("width");
+      // const height = url.searchParams.get("height");
+
+      // if ((width && Number(width) > 3000) || (height && Number(height) > 3000)) {
+      //   return new Response("Invalid value for " + key, { status: 400 });
+      // }
+
+      // return fetch(c.req.raw, {
+      //   method: "POST",
+      //   body: await object.arrayBuffer(),
+      //   cf: {
+      //     image: {
+      //       width: width ? width : undefined,
+      //       height: height ? height : undefined,
+      //       format: "webp",
+      //       metadata: "none",
+      //     },
+      //   },
+      // } as RequestInit & {
+      //   cf: {
+      //     image: RequestInitCfPropertiesImage;
+      //   };
+      // });
+    } catch (error) {
+      console.error("Failed to fetch object:", error);
+      return c.json(
+        {
+          type: `${NEXT_PUBLIC_CDN_URL}/problem/internal-error`,
+          title: "Internal Server Error",
+          detail: "Failed to generate signed URL",
+          instance: c.req.path,
+        },
+        500,
+        {
+          "Content-Type": "application/problem+json",
+          "Content-Language": "en",
+        }
+      );
+    }
   }
-});
+);
 
 export default app;
+
+async function generateETag(input: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(input);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return `"${hashHex}"`;
+}
