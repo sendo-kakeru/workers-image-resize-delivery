@@ -18,6 +18,7 @@ import type {
   RequestInitCfPropertiesImage,
 } from "@cloudflare/workers-types";
 import { etag } from "hono/etag";
+import { cache } from "hono/cache";
 
 type Bindings = {
   BUCKET: R2Bucket;
@@ -114,6 +115,9 @@ app.post(
 );
 
 app.get(`${IMAGE_DELIVERY_PATH}/*`, async (c) => {
+  cache({
+    cacheName: "image-delivery-cache",
+  });
   const { NEXT_PUBLIC_CDN_URL, BUCKET_URL } = env<Env>(c);
   const pathPrefix = `/${IMAGE_DELIVERY_PATH}/`;
   const key = c.req.path.substring(pathPrefix.length);
