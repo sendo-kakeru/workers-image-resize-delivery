@@ -10,6 +10,7 @@
     "@workers-image-resize-delivery/eslint-config": "workspace:*",
     "@workers-image-resize-delivery/typescript-config": "workspace:*",
     "dotenv-cli": "^8.0.0",
+    "esbuild": "^0.25.5",
     "typescript": "^5.0.0"
   },
   "dependencies": {
