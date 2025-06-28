@@ -28,4 +28,5 @@ export const IMAGE_CONTENT_TYPE = [
  */
 export const MAXIMUM_IMAGE_SIZE = 5 * 1024 * 1024;
 
-export const IMAGE_DELIVERY_PATH = "images";
+export const IMAGE_DELIVERY_PATH = "image-resizing";
+export const IMAGE_UPLOAD_PATH = "signed-url";

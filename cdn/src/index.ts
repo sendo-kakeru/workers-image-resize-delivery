@@ -4,22 +4,23 @@ import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import {
   IMAGE_DELIVERY_PATH,
   IMAGE_EXTENSION_TO_CONTENT_TYPE_MAP,
+  IMAGE_UPLOAD_PATH,
   R2_BUCKET_NAME,
   R2_BUCKET_REGION,
 } from "@workers-image-resize-delivery/common/constants";
 import { SignedUrlRequestSchema } from "@workers-image-resize-delivery/common/schema";
-import { Env } from "@workers-image-resize-delivery/common/env";
 import { createMiddleware } from "hono/factory";
-import { env } from "hono/adapter";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { cors } from "hono/cors";
-import type {
-  R2Bucket,
-  RequestInitCfPropertiesImage,
-} from "@cloudflare/workers-types";
+import type { RequestInitCfPropertiesImage } from "@cloudflare/workers-types";
 
-type Bindings = {
-  BUCKET: R2Bucket;
+const envVars = {
+  NEXT_PUBLIC_CDN_URL: "",
+  ASSETS_URL: "",
+  APP_URL: "",
+  CLOUDFLARE_R2_ENDPOINT: "",
+  CLOUDFLARE_R2_ACCESS_KEY_ID: "",
+  CLOUDFLARE_R2_SECRET_ACCESS_KEY: "",
 };
 
 type Variables = {
@@ -28,23 +29,15 @@ type Variables = {
 
 const app = new Hono<{
   Variables: Variables;
-  Bindings: Bindings;
+  Bindings: typeof envVars;
 }>();
 
 let r2Client: S3Client | null = null;
-const envVars = {
-  CLOUDFLARE_R2_ENDPOINT: "",
-  CLOUDFLARE_R2_ACCESS_KEY_ID: "",
-  CLOUDFLARE_R2_SECRET_ACCESS_KEY: "",
-};
 
 app.use(
   "*",
   cors({
-    origin: (_origin, c) => {
-      const { APP_URL } = env<Env>(c);
-      return APP_URL;
-    },
+    origin: (_origin, c) => c.env.APP_URL,
     allowHeaders: ["Accept, Content-Type, Content-Length, Authorization"],
     allowMethods: ["GET", "POST"],
   })
@@ -53,8 +46,7 @@ app.use(
 app.use(
   createMiddleware(async (c, next) => {
     if (!envVars.CLOUDFLARE_R2_ENDPOINT) {
-      const envData = env<Env>(c);
-      Object.assign(envVars, envData);
+      Object.assign(envVars, c.env);
     }
     if (!r2Client) {
       r2Client = new S3Client({
@@ -72,10 +64,9 @@ app.use(
 );
 
 app.post(
-  "/signed-url",
+  `/${IMAGE_UPLOAD_PATH}`,
   vValidator("json", SignedUrlRequestSchema),
   async (c) => {
-    const { NEXT_PUBLIC_CDN_URL } = env<Env>(c);
     const { path, extension } = c.req.valid("json");
     const key = crypto.randomUUID();
     try {
@@ -95,7 +86,7 @@ app.post(
       console.error("Failed to generate signed URL:", error);
       return c.json(
         {
-          type: `${NEXT_PUBLIC_CDN_URL}/problem/internal-error`,
+          type: `${c.env.NEXT_PUBLIC_CDN_URL}/problem/internal-error`,
           title: "Internal Server Error",
           detail: "Failed to generate signed URL",
           instance: c.req.path,
@@ -110,15 +101,14 @@ app.post(
   }
 );
 
-app.get(`${IMAGE_DELIVERY_PATH}/*`, async (c) => {
-  const { NEXT_PUBLIC_CDN_URL, BUCKET_URL } = env<Env>(c);
+app.get(`/${IMAGE_DELIVERY_PATH}/*`, async (c) => {
   const pathPrefix = `/${IMAGE_DELIVERY_PATH}/`;
   const key = c.req.path.substring(pathPrefix.length);
 
   if (!key || key.includes("..") || key.startsWith("/")) {
     return c.json(
       {
-        type: `${NEXT_PUBLIC_CDN_URL}/problem/invalid`,
+        type: `${c.env.NEXT_PUBLIC_CDN_URL}/problem/invalid`,
         title: "Bad Request",
         detail: "Invalid request",
         instance: c.req.path,
@@ -138,7 +128,7 @@ app.get(`${IMAGE_DELIVERY_PATH}/*`, async (c) => {
     if ((width && Number(width) > 3000) || (height && Number(height) > 3000)) {
       return c.json(
         {
-          type: `${NEXT_PUBLIC_CDN_URL}/problem/invalid`,
+          type: `${c.env.NEXT_PUBLIC_CDN_URL}/problem/invalid`,
           title: "Bad Request",
           detail: "Image dimensions must not exceed 3000px",
           instance: c.req.path,
@@ -153,7 +143,7 @@ app.get(`${IMAGE_DELIVERY_PATH}/*`, async (c) => {
 
     // 本番でカスタムドメインをつけた時のみ、image resizeが適応されるので開発時は効かない
     return fetch(
-      new Request(`${BUCKET_URL}/${key}`, { headers: c.req.raw.headers }),
+      new Request(`${c.env.ASSETS_URL}/${key}`, { headers: c.req.raw.headers }),
       {
         cf: {
           image: {
@@ -203,7 +193,7 @@ app.get(`${IMAGE_DELIVERY_PATH}/*`, async (c) => {
     console.error("Failed to fetch object:", error);
     return c.json(
       {
-        type: `${NEXT_PUBLIC_CDN_URL}/problem/internal-error`,
+        type: `${c.env.NEXT_PUBLIC_CDN_URL}/problem/internal-error`,
         title: "Internal Server Error",
         detail: "Failed to fetch image",
         instance: c.req.path,
